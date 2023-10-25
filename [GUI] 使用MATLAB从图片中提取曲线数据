@@ -1,0 +1,681 @@
+#only for study
+classdef GUI < matlab.apps.AppBase
+ 
+    % Properties that correspond to app components
+    properties (Access = public)
+        Graph2DataUIFigure         matlab.ui.Figure
+        TabGroup                   matlab.ui.container.TabGroup
+        Tab                        matlab.ui.container.Tab
+        CoordinateSystemPanel      matlab.ui.container.Panel
+        X_StartEditFieldLabel      matlab.ui.control.Label
+        X_StartEditField           matlab.ui.control.NumericEditField
+        X_EndEditFieldLabel        matlab.ui.control.Label
+        X_EndEditField             matlab.ui.control.NumericEditField
+        Y_EndEditFieldLabel        matlab.ui.control.Label
+        Y_EndEditField             matlab.ui.control.NumericEditField
+        Y_StartEditFieldLabel      matlab.ui.control.Label
+        Y_StartEditField           matlab.ui.control.NumericEditField
+        XscaleTypeButtonGroup      matlab.ui.container.ButtonGroup
+        LinearButton               matlab.ui.control.RadioButton
+        LogarithmicButton          matlab.ui.control.RadioButton
+        YscaleTypeButtonGroup      matlab.ui.container.ButtonGroup
+        LinearButton_2             matlab.ui.control.RadioButton
+        LogarithmicButton_2        matlab.ui.control.RadioButton
+        ClearAllButton             matlab.ui.control.Button
+        PrepareImagePanel          matlab.ui.container.Panel
+        CropButton                 matlab.ui.control.Button
+        LoadButton                 matlab.ui.control.Button
+        PerspectiveButton          matlab.ui.control.Button
+        Tab2                       matlab.ui.container.Tab
+        UndoButton                 matlab.ui.control.Button
+        ColorSegmentationPanel     matlab.ui.container.Panel
+        TargetButton               matlab.ui.control.Button
+        H_FactorSliderLabel        matlab.ui.control.Label
+        H_FactorSlider             matlab.ui.control.Slider
+        S_FactorSliderLabel        matlab.ui.control.Label
+        S_FactorSlider             matlab.ui.control.Slider
+        V_FactorSliderLabel        matlab.ui.control.Label
+        V_FactorSlider             matlab.ui.control.Slider
+        GraySegmentationPanel      matlab.ui.container.Panel
+        ThresholdingButton         matlab.ui.control.Button
+        FactorSliderLabel          matlab.ui.control.Label
+        FactorSlider               matlab.ui.control.Slider
+        CleanButton                matlab.ui.control.Button
+        RefreshButton              matlab.ui.control.Button
+        Tab3                       matlab.ui.container.Tab
+        GetDataPanel               matlab.ui.container.Panel
+        SaveAsButton               matlab.ui.control.Button
+        PointNumberEditFieldLabel  matlab.ui.control.Label
+        PointNumberEditField       matlab.ui.control.NumericEditField
+        PlotButton                 matlab.ui.control.Button
+        PleaseenteranINTEGERLabel  matlab.ui.control.Label
+        UIAxes                     matlab.ui.control.UIAxes
+        Version1020200301CopyrightC2020Haotian_WAllrightsreservedLabel  matlab.ui.control.Label
+    end
+ 
+    properties (Access = public)
+        Image % Description
+        Image_hsv
+        Image_target
+        Image_target_hsv
+        row
+        col
+        x_target % Description
+        y_target
+        xOriginal
+        yOriginal
+        xFinal
+        yFinal
+        data
+    end
+ 
+    methods (Access = private)
+ 
+        % Button pushed function: CleanButton
+        function CleanButtonPushed(app, event)
+            imshow(app.Image_target);
+            mask = roipoly(app.Image_target);
+            close;
+            [r_mask c_mask] = find(mask==1);
+            app.Image_target(r_mask,c_mask,1)=255;
+            app.Image_target(r_mask,c_mask,2)=255;
+            app.Image_target(r_mask,c_mask,3)=255;
+            imshow(app.Image_target,'Parent',app.UIAxes,'InitialMagnification','fit','border','tight');
+        end
+ 
+        % Button pushed function: ClearAllButton
+        function ClearAllButtonPushed(app, event)
+            app.Image = [];   % Clear Image  
+            imshow(app.Image,'Parent',app.UIAxes,'InitialMagnification','fit','border','tight');
+        end
+ 
+        % Button pushed function: CropButton
+        function CropButtonPushed(app, event)
+            app.Image = imcrop(app.Image);
+            close;
+            imshow(app.Image,'Parent',app.UIAxes,'InitialMagnification','fit','border','tight');
+        end
+ 
+        % Value changed function: FactorSlider
+        function FactorSliderValueChanged(app, event)
+            value = app.FactorSlider.Value;
+            threshold = graythresh(app.Image)+app.FactorSlider.Value;
+            app.Image_target = im2bw(app.Image,threshold);
+            imshow(app.Image_target,'Parent',app.UIAxes,'InitialMagnification','fit','border','tight');
+        end
+ 
+        % Value changed function: H_FactorSlider
+        function H_FactorSliderValueChanged(app, event)
+            value = app.H_FactorSlider.Value;
+            app.Image_hsv = rgb2hsv(app.Image);
+            app.Image_target = 255*ones(size(app.Image));
+            app.Image_target_hsv = rgb2hsv(app.Image_target);
+            H = app.Image_hsv(:,:,1);
+            S = app.Image_hsv(:,:,2);
+            V = app.Image_hsv(:,:,3);
+            [app.row, app.col] = ind2sub(size(app.Image_hsv),find(app.Image_hsv(:,:,1)>H(app.x_target,app.y_target)-app.H_FactorSlider.Value & app.Image_hsv(:,:,1)< H(app.x_target,app.y_target)+app.H_FactorSlider.Value & app.Image_hsv(:,:,2)>S(app.x_target,app.y_target)-app.S_FactorSlider.Value & app.Image_hsv(:,:,3)>V(app.x_target,app.y_target)-app.V_FactorSlider.Value));
+            for i = 1 : length(app.row)
+                app.Image_target_hsv(app.row(i),app.col(i),:) = app.Image_hsv(app.row(i),app.col(i),:);
+            end
+            app.Image_target = hsv2rgb(app.Image_target_hsv);
+            imshow(app.Image_target,'Parent',app.UIAxes,'InitialMagnification','fit','border','tight');
+        end
+ 
+        % Button pushed function: LoadButton
+        function LoadButtonPushed(app, event)
+            [file,path] = uigetfile('*.jpg;*.jpeg;*.png');
+            app.Image = imread(fullfile(path,file));
+            imshow(app.Image,'Parent',app.UIAxes,'InitialMagnification','fit','border','tight');
+        end
+ 
+        % Button pushed function: PerspectiveButton
+        function PerspectiveButtonPushed(app, event)
+            imshow(app.Image);
+            %set(gcf,'outerposition',get(0,'screensize'));
+            dot = ginput(4);
+            weight = round(sqrt((dot(1,1)-dot(2,1))^2+(dot(1,2)-dot(2,2))^2));
+            height = round(sqrt((dot(1,1)-dot(3,1))^2+(dot(1,2)-dot(3,2))^2));
+            X=[dot(1,2) dot(1,2)+weight dot(1,2) dot(1,2)+weight];
+            Y=[dot(1,1) dot(1,1) dot(1,1)+height dot(1,1)+height];
+            base = [X(1) Y(1);X(2) Y(2);X(3) Y(3);X(4) Y(4)];
+            tform = cp2tform(dot,base,'projective');
+            app.Image = imtransform(app.Image,tform,'XData',[X(1) X(2)],'YData',[Y(1) Y(4)]);
+            close;
+            imshow(app.Image,'Parent',app.UIAxes,'InitialMagnification','fit','border','tight');
+        end
+ 
+        % Button pushed function: PlotButton
+        function PlotButtonPushed(app, event)
+            % app.X_StartEditField.Value
+            % app.X_EndEditField.Value
+            % app.Y_StartEditField.Value
+            % app.Y_EndEditField.Value
+            % app.PointNumberEditField.Value
+            weight = size(app.Image,2);
+            height = size(app.Image,1);
+            % number = round(app.PointNumberSlider.Value);
+            interval = floor(weight/app.PointNumberEditField.Value);
+            app.xOriginal = [];
+            app.yOriginal = [];
+            if interval == 0
+                for i = 1:1:weight
+                    colum = app.Image(:,i);
+                    index = sort(find(colum == 0));
+                    if isempty(index) == 0
+                       app.xOriginal = [app.xOriginal i];
+                       app.yOriginal = [app.yOriginal index(1)+floor(length(index)/2)];
+                    end
+                end
+            else
+                for i = 1:interval:weight
+                    colum = app.Image(:,i);
+                    index = sort(find(colum == 0));
+                    if isempty(index) == 0
+                       app.xOriginal = [app.xOriginal i];
+                       app.yOriginal = [app.yOriginal index(1)+floor(length(index)/2)];
+                    end
+                end
+            end
+            app.yOriginal = height-app.yOriginal;
+            app.xFinal = (app.xOriginal./weight).*(app.X_EndEditField.Value-app.X_StartEditField.Value)+app.X_StartEditField.Value;
+            app.yFinal = (app.yOriginal./height).*(app.Y_EndEditField.Value-app.Y_StartEditField.Value)+app.Y_StartEditField.Value;
+            plot(app.xFinal,app.yFinal,'.');
+        end
+ 
+        % Value changed function: PointNumberEditField
+        function PointNumberEditFieldValueChanged(app, event)
+            value = app.PointNumberEditField.Value;
+        end
+ 
+        % Button pushed function: RefreshButton
+        function RefreshButtonPushed(app, event)
+            app.Image = app.Image_target;
+        end
+ 
+        % Value changed function: S_FactorSlider
+        function S_FactorSliderValueChanged(app, event)
+            value = app.S_FactorSlider.Value;
+            app.Image_hsv = rgb2hsv(app.Image);
+            app.Image_target = 255*ones(size(app.Image));
+            app.Image_target_hsv = rgb2hsv(app.Image_target);
+            H = app.Image_hsv(:,:,1);
+            S = app.Image_hsv(:,:,2);
+            V = app.Image_hsv(:,:,3);
+            [app.row, app.col] = ind2sub(size(app.Image_hsv),find(app.Image_hsv(:,:,1)>H(app.x_target,app.y_target)-app.H_FactorSlider.Value & app.Image_hsv(:,:,1)< H(app.x_target,app.y_target)+app.H_FactorSlider.Value & app.Image_hsv(:,:,2)>S(app.x_target,app.y_target)-app.S_FactorSlider.Value & app.Image_hsv(:,:,3)>V(app.x_target,app.y_target)-app.V_FactorSlider.Value));
+            for i = 1 : length(app.row)
+                app.Image_target_hsv(app.row(i),app.col(i),:) = app.Image_hsv(app.row(i),app.col(i),:);
+            end
+            app.Image_target = hsv2rgb(app.Image_target_hsv);
+            imshow(app.Image_target,'Parent',app.UIAxes,'InitialMagnification','fit','border','tight');
+        end
+ 
+        % Button pushed function: SaveAsButton
+        function SaveAsButtonPushed(app, event)
+            app.data = [app.xFinal' app.yFinal'];
+            xlswrite('C:\Users\BAR\Desktop\data_sheet_001.xlsx',app.data);
+            winopen('C:\Users\BAR\Desktop\data_sheet_001.xlsx');
+        end
+ 
+        % Button pushed function: TargetButton
+        function TargetButtonPushed(app, event)
+            app.Image_hsv = rgb2hsv(app.Image);
+            app.Image_target = 255*ones(size(app.Image));
+            app.Image_target_hsv = rgb2hsv(app.Image_target);
+            H = app.Image_hsv(:,:,1);
+            S = app.Image_hsv(:,:,2);
+            V = app.Image_hsv(:,:,3);
+            imshow(app.Image);
+            [app.y_target app.x_target] = ginput(1);
+            app.x_target = round(app.x_target);
+            app.y_target = round(app.y_target);
+            close;
+            [app.row, app.col] = ind2sub(size(app.Image_hsv),find(app.Image_hsv(:,:,1)>H(app.x_target,app.y_target)-app.H_FactorSlider.Value & app.Image_hsv(:,:,1)< H(app.x_target,app.y_target)+app.H_FactorSlider.Value & app.Image_hsv(:,:,2)>S(app.x_target,app.y_target)-app.S_FactorSlider.Value & app.Image_hsv(:,:,3)>V(app.x_target,app.y_target)-app.V_FactorSlider.Value));
+            for i = 1 : length(app.row)
+                app.Image_target_hsv(app.row(i),app.col(i),:) = app.Image_hsv(app.row(i),app.col(i),:);
+            end
+            app.Image_target = hsv2rgb(app.Image_target_hsv);
+            imshow(app.Image_target,'Parent',app.UIAxes,'InitialMagnification','fit','border','tight');
+        end
+ 
+        % Button pushed function: ThresholdingButton
+        function ThresholdingButtonPushed(app, event)
+            threshold = graythresh(app.Image);
+            app.Image_target = im2bw(app.Image,threshold);
+            imshow(app.Image_target,'Parent',app.UIAxes,'InitialMagnification','fit','border','tight');
+        end
+ 
+        % Button pushed function: UndoButton
+        function UndoButtonPushed(app, event)
+            imshow(app.Image,'Parent',app.UIAxes,'InitialMagnification','fit','border','tight');
+        end
+ 
+        % Value changed function: V_FactorSlider
+        function V_FactorSliderValueChanged(app, event)
+            value = app.V_FactorSlider.Value;
+            app.Image_hsv = rgb2hsv(app.Image);
+            app.Image_target = 255*ones(size(app.Image));
+            app.Image_target_hsv = rgb2hsv(app.Image_target);
+            H = app.Image_hsv(:,:,1);
+            S = app.Image_hsv(:,:,2);
+            V = app.Image_hsv(:,:,3);
+            [app.row, app.col] = ind2sub(size(app.Image_hsv),find(app.Image_hsv(:,:,1)>H(app.x_target,app.y_target)-app.H_FactorSlider.Value & app.Image_hsv(:,:,1)< H(app.x_target,app.y_target)+app.H_FactorSlider.Value & app.Image_hsv(:,:,2)>S(app.x_target,app.y_target)-app.S_FactorSlider.Value & app.Image_hsv(:,:,3)>V(app.x_target,app.y_target)-app.V_FactorSlider.Value));
+            for i = 1 : length(app.row)
+                app.Image_target_hsv(app.row(i),app.col(i),:) = app.Image_hsv(app.row(i),app.col(i),:);
+            end
+            app.Image_target = hsv2rgb(app.Image_target_hsv);
+            imshow(app.Image_target,'Parent',app.UIAxes,'InitialMagnification','fit','border','tight');
+        end
+ 
+        % Value changed function: X_EndEditField
+        function X_EndEditFieldValueChanged(app, event)
+            value = app.X_EndEditField.Value;
+        end
+ 
+        % Value changed function: X_StartEditField
+        function X_StartEditFieldValueChanged(app, event)
+            value = app.X_StartEditField.Value;     
+        end
+ 
+        % Selection changed function: XscaleTypeButtonGroup
+        function XscaleTypeButtonGroupSelectionChanged(app, event)
+            selectedButton = app.XscaleTypeButtonGroup.SelectedObject;
+        end
+ 
+        % Value changed function: Y_EndEditField
+        function Y_EndEditFieldValueChanged(app, event)
+            value = app.Y_EndEditField.Value;
+        end
+ 
+        % Value changed function: Y_StartEditField
+        function Y_StartEditFieldValueChanged(app, event)
+            value = app.Y_StartEditField.Value;     
+        end
+ 
+        % Selection changed function: YscaleTypeButtonGroup
+        function YscaleTypeButtonGroupSelectionChanged(app, event)
+            selectedButton = app.YscaleTypeButtonGroup.SelectedObject;
+        end
+    end
+ 
+    % App initialization and construction
+    methods (Access = private)
+ 
+        % Create UIFigure and components
+        function createComponents(app)
+ 
+            % Create Graph2DataUIFigure
+            app.Graph2DataUIFigure = uifigure;
+            app.Graph2DataUIFigure.Color = [0.9412 0.9412 0.9412];
+            app.Graph2DataUIFigure.Position = [300 50 960 750];
+            app.Graph2DataUIFigure.Name = 'Graph2Data';
+ 
+            % Create TabGroup
+            app.TabGroup = uitabgroup(app.Graph2DataUIFigure);
+            app.TabGroup.Position = [1 631 960 120];
+ 
+            % Create Tab
+            app.Tab = uitab(app.TabGroup);
+            app.Tab.Title = 'Tab';
+            app.Tab.BackgroundColor = [0.9412 0.9412 0.9412];
+ 
+            % Create CoordinateSystemPanel
+            app.CoordinateSystemPanel = uipanel(app.Tab);
+            app.CoordinateSystemPanel.TitlePosition = 'centertop';
+            app.CoordinateSystemPanel.Title = 'Coordinate   System';
+            app.CoordinateSystemPanel.BackgroundColor = [0.9412 0.9412 0.9412];
+            app.CoordinateSystemPanel.FontName = 'Microsoft YaHei UI';
+            app.CoordinateSystemPanel.Position = [261 0 560 96];
+ 
+            % Create X_StartEditFieldLabel
+            app.X_StartEditFieldLabel = uilabel(app.CoordinateSystemPanel);
+            app.X_StartEditFieldLabel.VerticalAlignment = 'center';
+            app.X_StartEditFieldLabel.FontName = 'Microsoft YaHei UI';
+            app.X_StartEditFieldLabel.Position = [21 48 46 15];
+            app.X_StartEditFieldLabel.Text = 'X_Start';
+ 
+            % Create X_StartEditField
+            app.X_StartEditField = uieditfield(app.CoordinateSystemPanel, 'numeric');
+            app.X_StartEditField.ValueChangedFcn = createCallbackFcn(app, @X_StartEditFieldValueChanged, true);
+            app.X_StartEditField.Position = [81 44 58 22];
+ 
+            % Create X_EndEditFieldLabel
+            app.X_EndEditFieldLabel = uilabel(app.CoordinateSystemPanel);
+            app.X_EndEditFieldLabel.VerticalAlignment = 'center';
+            app.X_EndEditFieldLabel.FontName = 'Microsoft YaHei UI';
+            app.X_EndEditFieldLabel.Position = [21 18 40 15];
+            app.X_EndEditFieldLabel.Text = 'X_End';
+ 
+            % Create X_EndEditField
+            app.X_EndEditField = uieditfield(app.CoordinateSystemPanel, 'numeric');
+            app.X_EndEditField.ValueChangedFcn = createCallbackFcn(app, @X_EndEditFieldValueChanged, true);
+            app.X_EndEditField.Position = [81 14 58 22];
+ 
+            % Create Y_EndEditFieldLabel
+            app.Y_EndEditFieldLabel = uilabel(app.CoordinateSystemPanel);
+            app.Y_EndEditFieldLabel.VerticalAlignment = 'center';
+            app.Y_EndEditFieldLabel.FontName = 'Microsoft YaHei UI';
+            app.Y_EndEditFieldLabel.Position = [301 18 40 15];
+            app.Y_EndEditFieldLabel.Text = 'Y_End';
+ 
+            % Create Y_EndEditField
+            app.Y_EndEditField = uieditfield(app.CoordinateSystemPanel, 'numeric');
+            app.Y_EndEditField.ValueChangedFcn = createCallbackFcn(app, @Y_EndEditFieldValueChanged, true);
+            app.Y_EndEditField.Position = [361 14 58 22];
+ 
+            % Create Y_StartEditFieldLabel
+            app.Y_StartEditFieldLabel = uilabel(app.CoordinateSystemPanel);
+            app.Y_StartEditFieldLabel.VerticalAlignment = 'center';
+            app.Y_StartEditFieldLabel.FontName = 'Microsoft YaHei UI';
+            app.Y_StartEditFieldLabel.Position = [301 48 45 15];
+            app.Y_StartEditFieldLabel.Text = 'Y_Start';
+ 
+            % Create Y_StartEditField
+            app.Y_StartEditField = uieditfield(app.CoordinateSystemPanel, 'numeric');
+            app.Y_StartEditField.ValueChangedFcn = createCallbackFcn(app, @Y_StartEditFieldValueChanged, true);
+            app.Y_StartEditField.Position = [361 44 58 22];
+ 
+            % Create XscaleTypeButtonGroup
+            app.XscaleTypeButtonGroup = uibuttongroup(app.CoordinateSystemPanel);
+            app.XscaleTypeButtonGroup.SelectionChangedFcn = createCallbackFcn(app, @XscaleTypeButtonGroupSelectionChanged, true);
+            app.XscaleTypeButtonGroup.BorderType = 'none';
+            app.XscaleTypeButtonGroup.Title = 'XscaleType';
+            app.XscaleTypeButtonGroup.FontName = 'Microsoft YaHei UI';
+            app.XscaleTypeButtonGroup.Position = [151 2 123 74];
+ 
+            % Create LinearButton
+            app.LinearButton = uiradiobutton(app.XscaleTypeButtonGroup);
+            app.LinearButton.Text = 'Linear';
+            app.LinearButton.Position = [1 34 57 15];
+            app.LinearButton.Value = true;
+ 
+            % Create LogarithmicButton
+            app.LogarithmicButton = uiradiobutton(app.XscaleTypeButtonGroup);
+            app.LogarithmicButton.Text = 'Logarithmic';
+            app.LogarithmicButton.Position = [1 13 86 15];
+ 
+            % Create YscaleTypeButtonGroup
+            app.YscaleTypeButtonGroup = uibuttongroup(app.CoordinateSystemPanel);
+            app.YscaleTypeButtonGroup.SelectionChangedFcn = createCallbackFcn(app, @YscaleTypeButtonGroupSelectionChanged, true);
+            app.YscaleTypeButtonGroup.BorderType = 'none';
+            app.YscaleTypeButtonGroup.Title = 'YscaleType';
+            app.YscaleTypeButtonGroup.FontName = 'Microsoft YaHei UI';
+            app.YscaleTypeButtonGroup.Position = [431 2 123 74];
+ 
+            % Create LinearButton_2
+            app.LinearButton_2 = uiradiobutton(app.YscaleTypeButtonGroup);
+            app.LinearButton_2.Text = 'Linear';
+            app.LinearButton_2.Position = [1 34 57 15];
+            app.LinearButton_2.Value = true;
+ 
+            % Create LogarithmicButton_2
+            app.LogarithmicButton_2 = uiradiobutton(app.YscaleTypeButtonGroup);
+            app.LogarithmicButton_2.Text = 'Logarithmic';
+            app.LogarithmicButton_2.Position = [1 13 86 15];
+ 
+            % Create ClearAllButton
+            app.ClearAllButton = uibutton(app.Tab, 'push');
+            app.ClearAllButton.ButtonPushedFcn = createCallbackFcn(app, @ClearAllButtonPushed, true);
+            app.ClearAllButton.BackgroundColor = [1 1 1];
+            app.ClearAllButton.FontName = 'Microsoft YaHei UI';
+            app.ClearAllButton.Position = [901 12 52.625 54];
+            app.ClearAllButton.Text = 'ClearAll';
+ 
+            % Create PrepareImagePanel
+            app.PrepareImagePanel = uipanel(app.Tab);
+            app.PrepareImagePanel.TitlePosition = 'centertop';
+            app.PrepareImagePanel.Title = 'Prepare  Image';
+            app.PrepareImagePanel.BackgroundColor = [0.9412 0.9412 0.9412];
+            app.PrepareImagePanel.FontName = 'Microsoft YaHei UI';
+            app.PrepareImagePanel.Position = [1 0 261 96];
+ 
+            % Create CropButton
+            app.CropButton = uibutton(app.PrepareImagePanel, 'push');
+            app.CropButton.ButtonPushedFcn = createCallbackFcn(app, @CropButtonPushed, true);
+            app.CropButton.BackgroundColor = [1 1 1];
+            app.CropButton.FontName = 'Microsoft YaHei UI';
+            app.CropButton.Position = [91 12 51 54];
+            app.CropButton.Text = 'Crop';
+ 
+            % Create LoadButton
+            app.LoadButton = uibutton(app.PrepareImagePanel, 'push');
+            app.LoadButton.ButtonPushedFcn = createCallbackFcn(app, @LoadButtonPushed, true);
+            app.LoadButton.BackgroundColor = [1 1 1];
+            app.LoadButton.FontName = 'Microsoft YaHei UI';
+            app.LoadButton.Position = [21 12 50 54];
+            app.LoadButton.Text = 'Load';
+ 
+            % Create PerspectiveButton
+            app.PerspectiveButton = uibutton(app.PrepareImagePanel, 'push');
+            app.PerspectiveButton.ButtonPushedFcn = createCallbackFcn(app, @PerspectiveButtonPushed, true);
+            app.PerspectiveButton.BackgroundColor = [1 1 1];
+            app.PerspectiveButton.FontName = 'Microsoft YaHei UI';
+            app.PerspectiveButton.Position = [157 12 88 54];
+            app.PerspectiveButton.Text = 'Perspective';
+ 
+            % Create Tab2
+            app.Tab2 = uitab(app.TabGroup);
+            app.Tab2.Title = 'Tab2';
+ 
+            % Create UndoButton
+            app.UndoButton = uibutton(app.Tab2, 'push');
+            app.UndoButton.ButtonPushedFcn = createCallbackFcn(app, @UndoButtonPushed, true);
+            app.UndoButton.BackgroundColor = [1 1 1];
+            app.UndoButton.FontName = 'Microsoft YaHei UI';
+            app.UndoButton.Position = [811 11 59.5 55];
+            app.UndoButton.Text = 'Undo';
+ 
+            % Create ColorSegmentationPanel
+            app.ColorSegmentationPanel = uipanel(app.Tab2);
+            app.ColorSegmentationPanel.TitlePosition = 'centertop';
+            app.ColorSegmentationPanel.Title = 'Color   Segmentation';
+            app.ColorSegmentationPanel.FontName = 'Microsoft YaHei UI';
+            app.ColorSegmentationPanel.Position = [341 0 341 96];
+ 
+            % Create TargetButton
+            app.TargetButton = uibutton(app.ColorSegmentationPanel, 'push');
+            app.TargetButton.ButtonPushedFcn = createCallbackFcn(app, @TargetButtonPushed, true);
+            app.TargetButton.BackgroundColor = [1 1 1];
+            app.TargetButton.FontName = 'Microsoft YaHei UI';
+            app.TargetButton.Position = [21 12 50 54];
+            app.TargetButton.Text = 'Target';
+ 
+            % Create H_FactorSliderLabel
+            app.H_FactorSliderLabel = uilabel(app.ColorSegmentationPanel);
+            app.H_FactorSliderLabel.HorizontalAlignment = 'right';
+            app.H_FactorSliderLabel.FontName = 'Microsoft YaHei UI';
+            app.H_FactorSliderLabel.Position = [95 51 56 15];
+            app.H_FactorSliderLabel.Text = 'H_Factor';
+ 
+            % Create H_FactorSlider
+            app.H_FactorSlider = uislider(app.ColorSegmentationPanel);
+            app.H_FactorSlider.Limits = [0 0.15];
+            app.H_FactorSlider.MajorTicks = [];
+            app.H_FactorSlider.MajorTickLabels = {};
+            app.H_FactorSlider.ValueChangedFcn = createCallbackFcn(app, @H_FactorSliderValueChanged, true);
+            app.H_FactorSlider.MinorTicks = [];
+            app.H_FactorSlider.FontName = 'Microsoft YaHei UI';
+            app.H_FactorSlider.Position = [165 57 157 3];
+            app.H_FactorSlider.Value = 0.06;
+ 
+            % Create S_FactorSliderLabel
+            app.S_FactorSliderLabel = uilabel(app.ColorSegmentationPanel);
+            app.S_FactorSliderLabel.HorizontalAlignment = 'right';
+            app.S_FactorSliderLabel.FontName = 'Microsoft YaHei UI';
+            app.S_FactorSliderLabel.Position = [95 31 54 15];
+            app.S_FactorSliderLabel.Text = 'S_Factor';
+ 
+            % Create S_FactorSlider
+            app.S_FactorSlider = uislider(app.ColorSegmentationPanel);
+            app.S_FactorSlider.Limits = [0.1 0.8];
+            app.S_FactorSlider.MajorTicks = [];
+            app.S_FactorSlider.MajorTickLabels = {};
+            app.S_FactorSlider.ValueChangedFcn = createCallbackFcn(app, @S_FactorSliderValueChanged, true);
+            app.S_FactorSlider.MinorTicks = [];
+            app.S_FactorSlider.FontName = 'Microsoft YaHei UI';
+            app.S_FactorSlider.Position = [165 37 155 3];
+            app.S_FactorSlider.Value = 0.4;
+ 
+            % Create V_FactorSliderLabel
+            app.V_FactorSliderLabel = uilabel(app.ColorSegmentationPanel);
+            app.V_FactorSliderLabel.HorizontalAlignment = 'right';
+            app.V_FactorSliderLabel.FontName = 'Microsoft YaHei UI';
+            app.V_FactorSliderLabel.Position = [95 11 55 15];
+            app.V_FactorSliderLabel.Text = 'V_Factor';
+ 
+            % Create V_FactorSlider
+            app.V_FactorSlider = uislider(app.ColorSegmentationPanel);
+            app.V_FactorSlider.Limits = [0 1];
+            app.V_FactorSlider.MajorTicks = [];
+            app.V_FactorSlider.MajorTickLabels = {};
+            app.V_FactorSlider.ValueChangedFcn = createCallbackFcn(app, @V_FactorSliderValueChanged, true);
+            app.V_FactorSlider.MinorTicks = [];
+            app.V_FactorSlider.FontName = 'Microsoft YaHei UI';
+            app.V_FactorSlider.Position = [165 17 156 3];
+            app.V_FactorSlider.Value = 0.6;
+ 
+            % Create GraySegmentationPanel
+            app.GraySegmentationPanel = uipanel(app.Tab2);
+            app.GraySegmentationPanel.TitlePosition = 'centertop';
+            app.GraySegmentationPanel.Title = 'Gray   Segmentation';
+            app.GraySegmentationPanel.FontName = 'Microsoft YaHei UI';
+            app.GraySegmentationPanel.Position = [1 0 341 96];
+ 
+            % Create ThresholdingButton
+            app.ThresholdingButton = uibutton(app.GraySegmentationPanel, 'push');
+            app.ThresholdingButton.ButtonPushedFcn = createCallbackFcn(app, @ThresholdingButtonPushed, true);
+            app.ThresholdingButton.BackgroundColor = [1 1 1];
+            app.ThresholdingButton.FontName = 'Microsoft YaHei UI';
+            app.ThresholdingButton.Position = [19.5 13 91 54];
+            app.ThresholdingButton.Text = 'Thresholding';
+ 
+            % Create FactorSliderLabel
+            app.FactorSliderLabel = uilabel(app.GraySegmentationPanel);
+            app.FactorSliderLabel.VerticalAlignment = 'center';
+            app.FactorSliderLabel.Position = [130 31 39 15];
+            app.FactorSliderLabel.Text = 'Factor';
+ 
+            % Create FactorSlider
+            app.FactorSlider = uislider(app.GraySegmentationPanel);
+            app.FactorSlider.Limits = [-0.2 0.2];
+            app.FactorSlider.MajorTickLabels = {'', '', '', '', '', ''};
+            app.FactorSlider.ValueChangedFcn = createCallbackFcn(app, @FactorSliderValueChanged, true);
+            app.FactorSlider.Position = [168 37 162 3];
+ 
+            % Create CleanButton
+            app.CleanButton = uibutton(app.Tab2, 'push');
+            app.CleanButton.ButtonPushedFcn = createCallbackFcn(app, @CleanButtonPushed, true);
+            app.CleanButton.BackgroundColor = [1 1 1];
+            app.CleanButton.FontName = 'Microsoft YaHei UI';
+            app.CleanButton.Position = [701 11 52 55];
+            app.CleanButton.Text = 'Clean';
+ 
+            % Create RefreshButton
+            app.RefreshButton = uibutton(app.Tab2, 'push');
+            app.RefreshButton.ButtonPushedFcn = createCallbackFcn(app, @RefreshButtonPushed, true);
+            app.RefreshButton.BackgroundColor = [1 1 1];
+            app.RefreshButton.FontName = 'Microsoft YaHei UI';
+            app.RefreshButton.Position = [891 11 59.5 55];
+            app.RefreshButton.Text = 'Refresh';
+ 
+            % Create Tab3
+            app.Tab3 = uitab(app.TabGroup);
+            app.Tab3.Title = 'Tab3';
+ 
+            % Create GetDataPanel
+            app.GetDataPanel = uipanel(app.Tab3);
+            app.GetDataPanel.TitlePosition = 'centertop';
+            app.GetDataPanel.Title = 'Get   Data';
+            app.GetDataPanel.FontName = 'Microsoft YaHei UI';
+            app.GetDataPanel.Position = [1 0 380 96];
+ 
+            % Create SaveAsButton
+            app.SaveAsButton = uibutton(app.GetDataPanel, 'push');
+            app.SaveAsButton.ButtonPushedFcn = createCallbackFcn(app, @SaveAsButtonPushed, true);
+            app.SaveAsButton.BackgroundColor = [1 1 1];
+            app.SaveAsButton.FontName = 'Microsoft YaHei UI';
+            app.SaveAsButton.Position = [301 12 60 54];
+            app.SaveAsButton.Text = 'Save As';
+ 
+            % Create PointNumberEditFieldLabel
+            app.PointNumberEditFieldLabel = uilabel(app.GetDataPanel);
+            app.PointNumberEditFieldLabel.VerticalAlignment = 'center';
+            app.PointNumberEditFieldLabel.FontName = 'Microsoft YaHei UI';
+            app.PointNumberEditFieldLabel.Position = [11 48 87 15];
+            app.PointNumberEditFieldLabel.Text = 'Point Number';
+ 
+            % Create PointNumberEditField
+            app.PointNumberEditField = uieditfield(app.GetDataPanel, 'numeric');
+            app.PointNumberEditField.ValueChangedFcn = createCallbackFcn(app, @PointNumberEditFieldValueChanged, true);
+            app.PointNumberEditField.FontName = 'Microsoft YaHei UI';
+            app.PointNumberEditField.Position = [111 44 90 22];
+ 
+            % Create PlotButton
+            app.PlotButton = uibutton(app.GetDataPanel, 'push');
+            app.PlotButton.ButtonPushedFcn = createCallbackFcn(app, @PlotButtonPushed, true);
+            app.PlotButton.BackgroundColor = [1 1 1];
+            app.PlotButton.FontName = 'Microsoft YaHei UI';
+            app.PlotButton.Position = [229 10 50 56];
+            app.PlotButton.Text = 'Plot';
+ 
+            % Create PleaseenteranINTEGERLabel
+            app.PleaseenteranINTEGERLabel = uilabel(app.GetDataPanel);
+            app.PleaseenteranINTEGERLabel.FontName = 'Microsoft YaHei UI';
+            app.PleaseenteranINTEGERLabel.Position = [11 11 190 15];
+            app.PleaseenteranINTEGERLabel.Text = 'Please enter an INTEGER. ';
+ 
+            % Create UIAxes
+            app.UIAxes = uiaxes(app.Graph2DataUIFigure);
+            app.UIAxes.FontName = 'Consolas';
+            app.UIAxes.MinorGridLineStyle = '-';
+            app.UIAxes.GridColor = [0.8275 0.8275 0.8275];
+            app.UIAxes.GridAlpha = 0.6;
+            app.UIAxes.GridColorMode = 'manual';
+            app.UIAxes.MinorGridAlpha = 0.2;
+            app.UIAxes.Box = 'on';
+            app.UIAxes.XColor = [0.8275 0.8275 0.8275];
+            app.UIAxes.XColorMode = 'manual';
+            app.UIAxes.YColor = [0.8275 0.8275 0.8275];
+            app.UIAxes.YColorMode = 'manual';
+            app.UIAxes.Color = [0.9412 0.9412 0.9412];
+            app.UIAxes.XGrid = 'on';
+            app.UIAxes.XMinorGrid = 'on';
+            app.UIAxes.YGrid = 'on';
+            app.UIAxes.YMinorGrid = 'on';
+            app.UIAxes.Position = [2 2 960 630];
+ 
+            % Create Version1020200301CopyrightC2020Haotian_WAllrightsreservedLabel
+            app.Version1020200301CopyrightC2020Haotian_WAllrightsreservedLabel = uilabel(app.Graph2DataUIFigure);
+            app.Version1020200301CopyrightC2020Haotian_WAllrightsreservedLabel.HorizontalAlignment = 'center';
+            app.Version1020200301CopyrightC2020Haotian_WAllrightsreservedLabel.VerticalAlignment = 'bottom';
+            app.Version1020200301CopyrightC2020Haotian_WAllrightsreservedLabel.FontName = 'Consolas';
+            app.Version1020200301CopyrightC2020Haotian_WAllrightsreservedLabel.FontSize = 11;
+            app.Version1020200301CopyrightC2020Haotian_WAllrightsreservedLabel.FontColor = [1 1 1];
+            app.Version1020200301CopyrightC2020Haotian_WAllrightsreservedLabel.Position = [511.5 736 449 15];
+            app.Version1020200301CopyrightC2020Haotian_WAllrightsreservedLabel.Text = 'Version: 1.0 20200301; Copyright (C) 2020 Haotian_W All rights reserved.';
+        end
+    end
+ 
+    methods (Access = public)
+ 
+        % Construct app
+        function app = GUI
+ 
+            % Create and configure components
+            createComponents(app)
+ 
+            % Register the app with App Designer
+            registerApp(app, app.Graph2DataUIFigure)
+ 
+            if nargout == 0
+                clear app
+            end
+        end
+ 
+        % Code that executes before app deletion
+        function delete(app)
+ 
+            % Delete UIFigure when app is deleted
+            delete(app.Graph2DataUIFigure)
+        end
+    end
+end
