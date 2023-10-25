@@ -1,1 +1,382 @@
 
+classdef app3 < matlab.apps.AppBase
+
+    % Properties that correspond to app components
+    properties (Access = public)
+        UIFigure          matlab.ui.Figure
+        Label_12          matlab.ui.control.Label
+        guangxianjiajiao  matlab.ui.control.NumericEditField
+        Label_11          matlab.ui.control.Label
+        Button            matlab.ui.control.Button
+        fangweijiao       matlab.ui.control.NumericEditField
+        Label_10          matlab.ui.control.Label
+        weidu             matlab.ui.control.NumericEditField
+        Label_9           matlab.ui.control.Label
+        jingdu            matlab.ui.control.NumericEditField
+        Label_8           matlab.ui.control.Label
+        sudu              matlab.ui.control.NumericEditField
+        Label_7           matlab.ui.control.Label
+        lujingjiao        matlab.ui.control.NumericEditField
+        Label_6           matlab.ui.control.Label
+        gaodu             matlab.ui.control.NumericEditField
+        Label_5           matlab.ui.control.Label
+        miao              matlab.ui.control.NumericEditField
+        Label_4           matlab.ui.control.Label
+        fenzhong          matlab.ui.control.NumericEditField
+        Label_3           matlab.ui.control.Label
+        xiaoshi           matlab.ui.control.NumericEditField
+        Label_2           matlab.ui.control.Label
+        jiri              matlab.ui.control.NumericEditField
+        Label             matlab.ui.control.Label
+        UIAxes            matlab.ui.control.UIAxes
+    end
+
+    % Callbacks that handle component events
+    methods (Access = private)
+
+        % Button pushed function: Button
+        function ButtonPushed(app, event)
+            %卫星入轨参数
+            %近地轨道卫星数据 轨道高度400km（400+6378），速度8km/s，积日选择180日
+            % 10 23 34 45 10000 6.314 0 0 0 85
+            N = app.jiri.Value;
+            H = app.xiaoshi.Value;
+            M = app.fenzhong.Value;
+            S = app.miao.Value;
+            r0 = app.gaodu.Value + 6378;
+            v0 = app.sudu.Value;
+            beta0 = app.lujingjiao.Value;
+            lambda0 = app.jingdu.Value;
+            delta0 = app.weidu.Value;
+            A0 = app.fangweijiao.Value;
+
+            mu = 3.986e5;%引力常数
+            we = 1/240;%地球自转角速度
+
+            axes('Position',[0.1 0.1 0.8 0.8])%画地球
+            load('topo.mat','topo','topomap1');
+            whos topo topomap1;
+            [x,y,z] = sphere(50);
+            props.AmbientStrength = 0.1;
+            props.DiffuseStrength = 1;
+            props.SpecularColorReflectance = .5;
+            props.SpecularExponent = 20;
+            props.SpecularStrength = 1;
+            props.FaceColor= 'texture';
+            props.EdgeColor = 'none';
+            props.FaceLighting = 'phong';
+            props.Cdata = topo;
+            surf(app.UIAxes,x*6378,y*6378,z*6378,props);
+            axis(app.UIAxes, 'equal');
+            view(3);
+            hold on;
+
+            e=sqrt(((r0*v0^2)/mu-1)^2*cosd(beta0)^2+sind(beta0)^2);%求偏心率e
+            a=mu*r0/(2*mu-v0^2*r0);%求轨道半长轴a
+            i=atand(sqrt(tand(delta0)^2+cotd(A0)^2*secd(delta0)^2));%求轨道倾角i
+            if A0<90%求升交点赤经omega
+                omega=lambda0-atand(tand(A0)*sind(delta0));
+            else
+                omega=lambda0-atand(tand(A0)*sind(delta0))+180;
+            end
+
+            costheta0=(r0*v0^2*cosd(beta0)^2/mu-1)/e;%求入轨时的真进点角
+            sintheta0=r0*v0^2*cosd(beta0)*sind(beta0)/(mu*e);
+            
+            if sintheta0 >= 0
+                theta0 = acosd(costheta0);
+            else
+                if costheta0 > 0
+                    theta0 = asind(sintheta0)+360;
+                else
+                    theta0 = 360-acosd(costheta0);
+                end
+            end
+            
+            E0 = acos((e+costheta0)/(1+e*costheta0));%求入轨时的偏近点角E0
+            M0 = E0 - e*sin(E0);%求入轨时的平近点角M0
+            w = asind(sind(delta0)/sind(i))-theta0;%求近心点角距w
+            h = r0*v0*cosd(beta0);%求角动量h
+            n = sqrt(mu/a^3);%求平均角速度n
+            
+            for k=1:101
+                T=2*pi/n;%求轨道周期T
+                t=(k-1)*T/100;
+                Mp=n*t+M0;%求平近点角M
+                E0 = 1;
+                E1 = 0; %函数迭代求偏近点角E(随时间t（s）变化)
+                kesi = E1 - E0;
+                while abs(kesi) > 0.0001
+                    E0 = E1;
+                    E1 = Mp + e * sin(E0);
+                    kesi = E1 - E0;
+                end
+                
+                E = E1;
+                theta=2*atand(sqrt((1+e)/(1-e))*tan(E/2)); %求真近点角theta
+                u=w+theta;  %求轨道角u
+
+                if u>=-180 && u<-90%求随轨道角改变的修正量change
+                    change=-180;
+                else
+                    if u>=-90 && u<90
+                        change=0;
+                    else
+                        change=180; %u>=90 && u<180
+                    end
+                end
+                
+                %求卫星星下点的经度lambdac和纬度deltac（地心固连坐标系中）
+                deltac=asind(sind(i)*sind(u));%纬度
+                if i<=90
+                    lambdac=omega+atand(cosd(i)*tand(u))-we*t+change;%经度
+                else
+                    lambdac=omega+atand(cosd(i)*tand(u))-we*t-change;%经度
+                end
+                
+                %求轨道半径（随真近点角变化）
+                re=a*(1-e^2)/(1+e*cosd(theta));
+                %在地心惯性坐标系中用xyz表示卫星的位置
+                xx=re*cosd(deltac)*cosd(lambdac+we*t);
+                yy=re*cosd(deltac)*sind(lambdac+we*t);
+                zz=re*sind(i)*sind(u);
+                %确定太阳直射点，纬度delta和经度lambda
+                delta=-23.45*cosd(2*pi*(N+10)/365);
+                lambda=-(3600*H+60*M+S-3600*12)*360/(3600*24)-we*t;
+                %计算太阳的位置，即光源位置
+                xsun=1.5e8*cosd(delta)*cosd(lambda);
+                ysun=1.5e8*cosd(delta)*sind(lambda);
+                zsun=1.5e8*sind(delta);
+                %求卫星与太阳的夹角（向量法）
+                coalpha=cosd(deltac)*cosd(delta)*cosd(lambdac-lambda)+sind(deltac)*sind(delta);
+                alpha=acosd(coalpha);
+                
+                %*************************作出卫星轨迹并显示太阳仰角*******************
+                %卫星所在位置太阳光线与当地水平面夹角的变化，卫星处于光照区中才有太阳光线
+                rs=re*sqrt(1-coalpha^2);
+                
+                if  coalpha < 0%卫星在背对太阳的一侧
+                    if  rs < 6378%卫星在地影区
+                        %画黑线
+                        plot3(app.UIAxes,xx,yy,zz,'ko');%黑色O画出卫星位置
+                        hold on;
+                        %地影区没有太阳仰角,此处用负角表示
+                        gama(k) = 90 - alpha;
+                        app.guangxianjiajiao.Value = double(gama(k));
+                        drawnow;                      
+                        pause(0.1);%动态显示停顿时间
+                        
+                        set(0,'DefaultFigureVisible','off');%保存图片 关闭figure
+                    else%卫星不在地影区，仍能被太阳照到
+                        %画红线
+                        plot3(app.UIAxes,xx,yy,zz,'r+');%红色+画出卫星位置
+                        hold on;
+                        %计算太阳仰角
+                        gama(k) = alpha - 90;
+                        app.guangxianjiajiao.Value = double(gama(k));
+                        drawnow;                      
+                        pause(0.1);%动态显示停顿时间
+                                                
+                        set(0,'DefaultFigureVisible','off');%保存图片 关闭figure
+                    end
+                else%卫星在正对太阳的一侧
+                    %画红线
+                    plot3(app.UIAxes,xx,yy,zz,'ro');%红色o画出卫星位置
+                    hold on;
+                    %计算太阳
+                    gama(k) = 90 - alpha;
+                    app.guangxianjiajiao.Value = double(gama(k));
+                    drawnow;
+                    pause(0.1);%动态显示停顿时间
+                    
+                    set(0,'DefaultFigureVisible','off');%保存图片 关闭figure
+                end
+                fid=fopen('data.txt','wt');
+%                 fprintf(fid,'%g\n',gama);
+%                 app.guangxianjiajiao.Value = num2str(gama(k));
+%                 drawnow;
+                hold on;
+            end
+        end
+    end
+
+    % Component initialization
+    methods (Access = private)
+
+        % Create UIFigure and components
+        function createComponents(app)
+
+            % Create UIFigure and hide until all components are created
+            app.UIFigure = uifigure('Visible', 'off');
+            app.UIFigure.Position = [100 100 830 489];
+            app.UIFigure.Name = 'MATLAB App';
+
+            % Create UIAxes
+            app.UIAxes = uiaxes(app.UIFigure);
+            xlabel(app.UIAxes, 'X')
+            ylabel(app.UIAxes, 'Y')
+            zlabel(app.UIAxes, 'Z')
+            app.UIAxes.View = [25 25];
+            app.UIAxes.NextPlot = 'add';
+            app.UIAxes.Tag = 'livePlot';
+            app.UIAxes.Position = [1 59 532 365];
+
+            % Create Label
+            app.Label = uilabel(app.UIFigure);
+            app.Label.HorizontalAlignment = 'right';
+            app.Label.Position = [560 362 29 22];
+            app.Label.Text = '积日';
+
+            % Create jiri
+            app.jiri = uieditfield(app.UIFigure, 'numeric');
+            app.jiri.Position = [599 362 47 22];
+
+            % Create Label_2
+            app.Label_2 = uilabel(app.UIFigure);
+            app.Label_2.HorizontalAlignment = 'right';
+            app.Label_2.Position = [678 362 29 22];
+            app.Label_2.Text = '小时';
+
+            % Create xiaoshi
+            app.xiaoshi = uieditfield(app.UIFigure, 'numeric');
+            app.xiaoshi.Position = [735 362 47 22];
+
+            % Create Label_3
+            app.Label_3 = uilabel(app.UIFigure);
+            app.Label_3.HorizontalAlignment = 'right';
+            app.Label_3.Position = [560 324 29 22];
+            app.Label_3.Text = '分钟';
+
+            % Create fenzhong
+            app.fenzhong = uieditfield(app.UIFigure, 'numeric');
+            app.fenzhong.Position = [599 324 47 22];
+
+            % Create Label_4
+            app.Label_4 = uilabel(app.UIFigure);
+            app.Label_4.HorizontalAlignment = 'right';
+            app.Label_4.Position = [680 324 25 22];
+            app.Label_4.Text = '秒';
+
+            % Create miao
+            app.miao = uieditfield(app.UIFigure, 'numeric');
+            app.miao.Position = [735 324 47 22];
+
+            % Create Label_5
+            app.Label_5 = uilabel(app.UIFigure);
+            app.Label_5.HorizontalAlignment = 'right';
+            app.Label_5.Position = [560 284 29 22];
+            app.Label_5.Text = '高度';
+
+            % Create gaodu
+            app.gaodu = uieditfield(app.UIFigure, 'numeric');
+            app.gaodu.Position = [599 284 47 22];
+
+            % Create Label_6
+            app.Label_6 = uilabel(app.UIFigure);
+            app.Label_6.HorizontalAlignment = 'right';
+            app.Label_6.Position = [660 284 65 22];
+            app.Label_6.Text = '飞行路径角';
+
+            % Create lujingjiao
+            app.lujingjiao = uieditfield(app.UIFigure, 'numeric');
+            app.lujingjiao.Position = [735 284 47 22];
+
+            % Create Label_7
+            app.Label_7 = uilabel(app.UIFigure);
+            app.Label_7.HorizontalAlignment = 'right';
+            app.Label_7.Position = [560 250 29 22];
+            app.Label_7.Text = '速度';
+
+            % Create sudu
+            app.sudu = uieditfield(app.UIFigure, 'numeric');
+            app.sudu.Position = [599 250 47 22];
+
+            % Create Label_8
+            app.Label_8 = uilabel(app.UIFigure);
+            app.Label_8.HorizontalAlignment = 'right';
+            app.Label_8.Position = [678 250 29 22];
+            app.Label_8.Text = '经度';
+
+            % Create jingdu
+            app.jingdu = uieditfield(app.UIFigure, 'numeric');
+            app.jingdu.Position = [735 250 47 22];
+
+            % Create Label_9
+            app.Label_9 = uilabel(app.UIFigure);
+            app.Label_9.HorizontalAlignment = 'right';
+            app.Label_9.Position = [560 211 29 22];
+            app.Label_9.Text = '纬度';
+
+            % Create weidu
+            app.weidu = uieditfield(app.UIFigure, 'numeric');
+            app.weidu.Position = [599 211 47 22];
+
+            % Create Label_10
+            app.Label_10 = uilabel(app.UIFigure);
+            app.Label_10.HorizontalAlignment = 'right';
+            app.Label_10.Position = [660 211 65 22];
+            app.Label_10.Text = '入轨方位角';
+
+            % Create fangweijiao
+            app.fangweijiao = uieditfield(app.UIFigure, 'numeric');
+            app.fangweijiao.Position = [735 211 47 22];
+
+            % Create Button
+            app.Button = uibutton(app.UIFigure, 'push');
+            app.Button.ButtonPushedFcn = createCallbackFcn(app, @ButtonPushed, true);
+            app.Button.FontSize = 20;
+            app.Button.FontWeight = 'bold';
+            app.Button.Position = [633 133 104 34];
+            app.Button.Text = '开始';
+
+            % Create Label_11
+            app.Label_11 = uilabel(app.UIFigure);
+            app.Label_11.HorizontalAlignment = 'right';
+            app.Label_11.FontSize = 16;
+            app.Label_11.Position = [565 72 69 22];
+            app.Label_11.Text = '光线夹角';
+
+            % Create guangxianjiajiao
+            app.guangxianjiajiao = uieditfield(app.UIFigure, 'numeric');
+            app.guangxianjiajiao.Position = [644 72 100 27];
+
+            % Create Label_12
+            app.Label_12 = uilabel(app.UIFigure);
+            app.Label_12.BackgroundColor = [0.0157 0.5569 0.7882];
+            app.Label_12.HorizontalAlignment = 'center';
+            app.Label_12.FontSize = 25;
+            app.Label_12.FontWeight = 'bold';
+            app.Label_12.FontColor = [1 1 1];
+            app.Label_12.Position = [1 439 830 51];
+            app.Label_12.Text = '星地日关系模拟';
+
+            % Show the figure after all components are created
+            app.UIFigure.Visible = 'on';
+        end
+    end
+
+    % App creation and deletion
+    methods (Access = public)
+
+        % Construct app
+        function app = app3
+
+            % Create UIFigure and components
+            createComponents(app)
+
+            % Register the app with App Designer
+            registerApp(app, app.UIFigure)
+
+            if nargout == 0
+                clear app
+            end
+        end
+
+        % Code that executes before app deletion
+        function delete(app)
+
+            % Delete UIFigure when app is deleted
+            delete(app.UIFigure)
+        end
+    end
+end
