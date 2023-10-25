@@ -1,0 +1,211 @@
+#put figure in the same path as matlab code
+classdef Get_color < matlab.apps.AppBase
+
+    % Properties that correspond to app components
+    properties (Access = public)
+        UIFigure      matlab.ui.Figure
+        UIAxes        matlab.ui.control.UIAxes
+        startButton   matlab.ui.control.Button
+        UIAxes2       matlab.ui.control.UIAxes
+        selectButton  matlab.ui.control.Button
+        UIAxes3       matlab.ui.control.UIAxes
+        Slider        matlab.ui.control.Slider
+    end
+
+    
+    properties (Access = private)
+       IM % 源图像
+       SIM
+       sizeW % 尺寸
+       sizeH % 尺寸
+       filename % 文件名
+       x
+       y
+       
+       S = 25;
+            
+    end
+    
+    methods (Access = private)
+        
+        function [x, y] = selectDataPoints(~, ax)
+            roi = drawpoint(ax);
+            x = roi.Position(2);
+            y = roi.Position(1);
+        end
+    end
+    
+
+    % Callbacks that handle component events
+    methods (Access = private)
+
+        % Button pushed function: startButton
+        function startButtonPushed(app, event)
+            [app.x,app.y]=app.selectDataPoints(app.UIAxes2);
+            
+            if app.x<app.S
+                app.x=app.S;
+            end
+            
+            if app.y<app.S
+                app.y=app.S;
+            end
+            
+            if app.x>app.sizeW-app.S
+                app.x=app.sizeW-app.S;
+            end
+            
+            if app.y>app.sizeH-app.S
+                app.y=app.sizeH-app.S;
+            end
+            
+            app.x=int16(app.x);
+            app.y=int16(app.y);
+            
+            app.SIM = app.IM(app.x-app.S:app.x+app.S,app.y-app.S:app.y+app.S,:);
+            
+            imshow(app.SIM,'Parent',app.UIAxes)
+            
+            app.SIM=rgb2hsv(app.SIM);
+            Color=int8(app.SIM(:,:,1).*256);
+            
+            [w,h,~]=size(app.SIM);
+
+            H=zeros(1,255);
+
+            for i=1:w
+                for j=1:h
+                    H(1,Color(i,j)+1)=H(1,Color(i,j)+1)+1;
+                end
+            end
+            
+            Count1=1;
+            Count2=1;
+            Count3=1;
+            
+            E=zeros(1,255);
+            
+            for i=2:255
+                if(H(1,i)>H(1,Count1))
+                    Count3=Count2;
+                    Count2=Count1;
+                    Count1=i;
+                end
+            end
+            
+            E(1,Count1)=1;
+            E(1,Count2)=1;
+            E(1,Count3)=1;
+            
+            lables=strings(1,255);
+            pie(app.UIAxes3,H,E,lables);
+            colormap(app.UIAxes3,hsv);
+            
+            temp=allchild(app.UIAxes3);
+            
+            for i=2:2:510
+                set(temp(i),"Linestyle","none");
+            end
+     
+        end
+
+        % Button pushed function: selectButton
+        function selectButtonPushed(app, event)
+            [app.filename]=uigetfile('*.*','请选择文件');
+            app.IM=imread(app.filename);
+            [app.sizeW,app.sizeH,~]=size(app.IM);
+            imshow(app.IM,'Parent',app.UIAxes2)
+        end
+
+        % Value changed function: Slider
+        function SliderValueChanged(app, event)
+            value = app.Slider.Value;
+            app.S=value;
+        end
+    end
+
+    % Component initialization
+    methods (Access = private)
+
+        % Create UIFigure and components
+        function createComponents(app)
+
+            % Create UIFigure and hide until all components are created
+            app.UIFigure = uifigure('Visible', 'off');
+            app.UIFigure.Position = [100 100 713 701];
+            app.UIFigure.Name = 'MATLAB App';
+
+            % Create UIAxes
+            app.UIAxes = uiaxes(app.UIFigure);
+            title(app.UIAxes, '子图')
+            xlabel(app.UIAxes, '')
+            ylabel(app.UIAxes, '')
+            app.UIAxes.TitleFontWeight = 'bold';
+            app.UIAxes.Position = [67 17 287 241];
+
+            % Create startButton
+            app.startButton = uibutton(app.UIFigure, 'push');
+            app.startButton.ButtonPushedFcn = createCallbackFcn(app, @startButtonPushed, true);
+            app.startButton.Position = [514 316 43 98];
+            app.startButton.Text = 'start';
+
+            % Create UIAxes2
+            app.UIAxes2 = uiaxes(app.UIFigure);
+            title(app.UIAxes2, '源图像')
+            xlabel(app.UIAxes2, 'X')
+            ylabel(app.UIAxes2, 'Y')
+            app.UIAxes2.TitleFontWeight = 'bold';
+            app.UIAxes2.Position = [57 257 435 352];
+
+            % Create selectButton
+            app.selectButton = uibutton(app.UIFigure, 'push');
+            app.selectButton.ButtonPushedFcn = createCallbackFcn(app, @selectButtonPushed, true);
+            app.selectButton.Position = [514 479 43 87];
+            app.selectButton.Text = 'select';
+
+            % Create UIAxes3
+            app.UIAxes3 = uiaxes(app.UIFigure);
+            title(app.UIAxes3, '色彩组成饼图')
+            xlabel(app.UIAxes3, '')
+            ylabel(app.UIAxes3, '')
+            app.UIAxes3.TitleFontWeight = 'bold';
+            app.UIAxes3.Position = [353 17 280 241];
+
+            % Create Slider
+            app.Slider = uislider(app.UIFigure);
+            app.Slider.Limits = [10 50];
+            app.Slider.Orientation = 'vertical';
+            app.Slider.ValueChangedFcn = createCallbackFcn(app, @SliderValueChanged, true);
+            app.Slider.Position = [587 316 3 250];
+            app.Slider.Value = 10;
+
+            % Show the figure after all components are created
+            app.UIFigure.Visible = 'on';
+        end
+    end
+
+    % App creation and deletion
+    methods (Access = public)
+
+        % Construct app
+        function app = Get_color
+
+            % Create UIFigure and components
+            createComponents(app)
+
+            % Register the app with App Designer
+            registerApp(app, app.UIFigure)
+
+            if nargout == 0
+                clear app
+            end
+        end
+
+        % Code that executes before app deletion
+        function delete(app)
+
+            % Delete UIFigure when app is deleted
+            delete(app.UIFigure)
+        end
+    end
+end
