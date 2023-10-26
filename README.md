@@ -1,7 +1,10 @@
 # app_design_code
 #These are some cases for matlab classdef     matlab中的 classdef定义类的使用
+
 #Just for study not for any commercial interest. 
+
 PLZ read these codes below at first.#先阅读以下matlab中classdef的标准定义，再运行例子进行学习
+
 classdef classExample
     %UNTITLED Summary of this class goes here
     %   Detailed explanation goes here  详细解释如下
