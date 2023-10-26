@@ -3,8 +3,23 @@
 
 #Just for study not for any commercial interest. 
 
-PLZ read these codes below at first.#先阅读以下matlab中classdef的标准定义，再运行例子进行学习
+PLZ read these codes below at first.#先阅读以下matlab中app类， classdef的标准定义，再运行例子进行学习
+#this is app classdef
+classdef　类名 <matlab.apps.AppBase
+　　properties(Access=public)
+　　　　……
+　　end
+　　methods(Access=private)
+　　　　　function 函数1（app,event）
+　　　　　　……
+　　　　　end
+　　　　　function 函数2（app）
+　　　　　　……
+　　　　　end
+　　　end
+end
 
+#this is classdef classExample, usually file name same as classExample
 classdef classExample
     %UNTITLED Summary of this class goes here
     %   Detailed explanation goes here  详细解释如下
